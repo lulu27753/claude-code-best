@@ -1,7 +1,7 @@
 import type { RoutingModelConfig } from 'src/utils/model/routingConfig.js'
 import { getFallbackModel } from 'src/utils/model/routingConfig.js'
 import { analyzeMessageComplexity } from 'src/utils/model/routingDecision.js'
-import type { MessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
+import type { BetaMessageParam as MessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 
 export interface RoutingResult {
   provider: RoutingModelConfig['provider']
