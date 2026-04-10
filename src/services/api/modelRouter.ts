@@ -1,5 +1,5 @@
 import type { RoutingModelConfig } from 'src/utils/model/routingConfig.js'
-import { getRoutingModelConfig, getFallbackModel } from 'src/utils/model/routingConfig.js'
+import { getFallbackModel } from 'src/utils/model/routingConfig.js'
 import { analyzeMessageComplexity } from 'src/utils/model/routingDecision.js'
 import type { MessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 
@@ -19,48 +19,50 @@ export class ModelRouter {
   static getInstance(): ModelRouter {
     if (!ModelRouter.instance) {
       ModelRouter.instance = new ModelRouter()
-     }
-     return ModelRouter.instance
-   }
+      }
+    return ModelRouter.instance
+    }
 
   async routeRequest(
      messages: MessageParam[]
-   ): Promise<RoutingResult | null> {
-     const config = getRoutingConfigInstance()
-    if (!config || !config.routingModel) return null
+    ): Promise<RoutingResult | null> {
+       const config = await getRoutingConfigInstance()
+      if (!config || !config.routingModel) return null
 
-    const analysis = await analyzeMessageComplexity(messages, config.routingModel)
+      const analysis = await analyzeMessageComplexity(messages, config.routingModel)
 
-    const targetModelConfig =
-       analysis.complexity === 'simple'
-          ? getFallbackModel('simple')
-          : getFallbackModel('complex')
+      const targetModelConfig =
+         analysis.complexity === 'simple'
+             ? getFallbackModel('simple')
+             : getFallbackModel('complex')
 
-    if (!targetModelConfig) return null
+      if (!targetModelConfig) return null
 
-     const routingResult: RoutingResult = {
-      provider: targetModelConfig.provider,
-      model: targetModelConfig.model,
-      baseUrl: targetModelConfig.baseUrl || undefined,
-      apiKey: await getApiKey(targetModelConfig.apiKeyEnvar),
-       reasoning: `Routing decision: ${analysis.intent} (${analysis.complexity}, ${analysis.estimatedTokens} tokens)`
+      const routingResult: RoutingResult = {
+        provider: targetModelConfig.provider,
+        model: targetModelConfig.model,
+        baseUrl: targetModelConfig.baseUrl || undefined,
+        apiKey: getApiKey(targetModelConfig.apiKeyEnvar),
+         reasoning: `Routing decision: ${analysis.intent} (${analysis.complexity}, ${analysis.estimatedTokens} tokens)`
+          }
+
+      return routingResult
+       }
      }
-
-    return routingResult
-   }
- }
 
 export const modelRouter = ModelRouter.getInstance()
 
-// Import helper at runtime to handle config properly
-function getRoutingConfigInstance(): { routingModel?: RoutingModelConfig; fallbackModels: Record<'simple' | 'complex', RoutingModelConfig | null> } {
-  const config = require('src/utils/model/routingConfig.js').getRoutingConfig()
+async function getRoutingConfigInstance(): Promise<{ routingModel?: RoutingModelConfig; fallbackModels: Record<'simple' | 'complex', RoutingModelConfig | null> }> {
+  const configModule = await import('src/utils/model/routingConfig.js')
+  const config = configModule.getRoutingConfig()
+
   return {
     routingModel: config.routingModel || undefined,
     fallbackModels: config.fallbackModels
    }
 }
 
-async function getApiKey(keyName: string): Promise<string> {
+// Get API key from environment variables safely
+function getApiKey(keyName: string): string {
   return process.env[keyName] || ''
 }
